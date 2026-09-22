@@ -1,0 +1,36 @@
+name: Semgrep
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history needed: push events diff against the previous commit,
+          # and `semgrep ci` needs history to compute the PR merge-base too.
+          fetch-depth: 0
+
+      - name: Install Semgrep
+        run: pipx install semgrep
+
+      - name: Run Semgrep
+        run: |
+          BASELINE_FLAG=""
+          if [ "${{ github.event_name }}" = "push" ] && \
+             [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            BASELINE_FLAG="--baseline-commit=${{ github.event.before }}"
+          fi
+          semgrep ci \
+            --config=p/owasp-top-ten \
+            --config=p/javascript \
+            --config=p/nodejsscan \
+            $BASELINE_FLAG
